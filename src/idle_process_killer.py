@@ -13,7 +13,10 @@ TB = 40
 # Wait period between two subsequent checks in seconds
 _IDLE_CHECK_WAIT_TIME = 60 * 0.25
 
-_IDLE_CHECK_START_TIME = 9
+# (Hour, Minutes)
+_IDLE_CHECK_START_TIME = (9, 30)
+
+MIN_MEM_DELTA = 0.001
 
 
 def get_memory_usage(pid, unit=MB):
@@ -33,11 +36,32 @@ def get_pid_list(name):
 class ProcessIdleChecker(_threading.Thread):
     def __init__(self, pid):
         self._pid = pid
+        self._mem_prev = get_memory_usage(self._pid)
 
+    @property
+    def its_time_to_kill(self):
         current_time = _datetime.datetime.now()
-        dir(current_time.hour)
+        kill_hour, kill_min = _IDLE_CHECK_START_TIME
+
+        if current_time.hour > kill_hour:
+            if current_time.min > kill_min:
+                print "Time to kill"
+                return True
+        print "Its Not Time to kill "
+        return False
+
+    @property
+    def process_is_idle(self):
+        mem_current = get_memory_usage(self._pid)
+        mem_delta = abs(self._mem_prev - mem_current)
+        print "Mem Delta : %f" % mem_delta
+        if mem_delta > MIN_MEM_DELTA:
+            return False
+        return True
 
     def run(self):
+        if not self.its_time_to_kill or not self.process_is_idle:
+            print ""
         pass
 
 
